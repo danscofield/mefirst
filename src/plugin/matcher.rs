@@ -53,6 +53,7 @@ impl PatternMatcher {
     }
     
     /// Get the pattern type for debugging/logging
+    #[allow(dead_code)]
     pub fn pattern_type(&self) -> &PatternType {
         match self {
             PatternMatcher::Exact(_) => &PatternType::Exact,

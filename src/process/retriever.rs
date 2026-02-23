@@ -38,6 +38,7 @@ impl ProcessMetadataRetriever {
     /// 1. Getting the socket inode from fstat()
     /// 2. Searching /proc/*/fd/* to find which process owns the socket
     /// 3. Reading process info from /proc/<pid>/
+    #[allow(dead_code)]
     pub fn get_metadata_from_fd(&self, fd: i32) -> Option<ProcessInfoWithDestination> {
         #[cfg(target_os = "linux")]
         {
@@ -77,6 +78,7 @@ impl ProcessMetadataRetriever {
     }
     
     #[cfg(target_os = "linux")]
+    #[allow(dead_code)]
     fn get_metadata_from_fd_impl(&self, fd: i32) -> Option<ProcessInfoWithDestination> {
         use tracing::{info, debug, warn};
         
@@ -200,6 +202,7 @@ impl ProcessMetadataRetriever {
 
 /// Get socket inode from file descriptor
 #[cfg(target_os = "linux")]
+#[allow(dead_code)]
 fn get_socket_inode(fd: i32) -> Option<u64> {
     let path = format!("/proc/self/fd/{}", fd);
     let link_target = fs::read_link(&path).ok()?;

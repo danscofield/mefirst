@@ -96,6 +96,7 @@ impl Default for LoggingConfig {
     }
 }
 
+#[allow(dead_code)]
 impl LoggingConfig {
     /// Create a new logging configuration with the specified level
     pub fn new(level: Level) -> Self {

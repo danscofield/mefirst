@@ -8,6 +8,7 @@ pub struct SocketFd(pub i32);
 
 /// Layer that extracts socket FD and adds it to request extensions
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct SocketFdLayer;
 
 impl<S> Layer<S> for SocketFdLayer {
@@ -20,6 +21,7 @@ impl<S> Layer<S> for SocketFdLayer {
 
 /// Service that extracts socket FD
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct SocketFdService<S> {
     inner: S,
 }

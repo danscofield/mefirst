@@ -58,6 +58,7 @@ impl UpstreamClient {
     /// All headers from the original request are forwarded transparently.
     /// 
     /// For more control over HTTP method and headers, use `proxy_request_full`.
+    #[allow(dead_code)]
     pub async fn proxy_request(
         &self,
         path: &str,

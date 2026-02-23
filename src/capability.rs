@@ -8,6 +8,7 @@ use crate::error::{InterposerError, Result};
 
 /// Status of all capabilities required for eBPF and process metadata
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CapabilityStatus {
     // eBPF operation capabilities
     pub has_bpf: bool,
@@ -21,6 +22,7 @@ pub struct CapabilityStatus {
 
 /// Check for all required capabilities before loading eBPF programs
 /// This should be called before any eBPF operations
+#[allow(dead_code)]
 pub fn check_all_capabilities() -> Result<CapabilityStatus> {
     #[cfg(all(target_os = "linux", feature = "ebpf"))]
     {

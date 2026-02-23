@@ -2,6 +2,7 @@ use thiserror::Error;
 
 /// Main error type for the Interposer
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum InterposerError {
     // Configuration errors
     #[error("Configuration error: {0}")]

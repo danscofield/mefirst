@@ -20,6 +20,7 @@ pub struct ProcessInfo {
 
 impl ProcessInfo {
     /// Create a new ProcessInfo
+    #[allow(dead_code)]
     pub fn new(
         uid: u32,
         username: String,
