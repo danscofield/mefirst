@@ -1,0 +1,90 @@
+# mefirst proxy Configuration with proxy_request_stdin Feature
+#
+# This demonstrates how to use proxy_request_stdin to forward HTTP requests
+# with process metadata headers to command-based response sources
+
+# Cgroup path for eBPF attachment
+cgroup_path = "/sys/fs/cgroup"
+
+# Target configuration
+target_address = "169.254.169.254"
+target_port = 80
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+bind_port = 8080
+
+# Metrics configuration
+enable_metrics = true
+metrics_port = 9090
+
+# proxy_request_stdin examples
+
+# Example 1: Forward complete HTTP request with process metadata headers to a command
+# The command receives the full HTTP request on stdin with these additional headers:
+#   X-Forwarded-Uid: <uid>
+#   X-Forwarded-Username: <username>
+#   X-Forwarded-Pid: <pid>
+#   X-Forwarded-Process-Name: <executable path>
+#   X-Forwarded-Process-Args: <command line>
+#
+# The command should output a complete HTTP response on stdout:
+#   HTTP/1.1 200 OK
+#   Content-Type: application/json
+#   
+#   {"result": "success"}
+#
+# If the command outputs a valid HTTP response, the status code and headers
+# will be parsed from it. Otherwise, the configured status_code is used.
+[[plugins]]
+pattern = "/api/process-aware"
+pattern_type = "exact"
+response_source = { type = "command", command = "python3", args = ["-c", "import sys; print('HTTP/1.1 200 OK\\nContent-Type: text/plain\\n\\nReceived:', sys.stdin.read())"] }
+# status_code is optional when proxy_request_stdin=true and command outputs HTTP response
+proxy_request_stdin = true
+
+# Example 2: Process-aware routing with stdin forwarding and HTTP response parsing
+# Only forward requests from specific users with full request context
+[[plugins]]
+pattern = "/admin/*"
+pattern_type = "glob"
+response_source = { type = "command", command = "./scripts/admin-handler.sh", args = [] }
+# Script should output: HTTP/1.1 <code> <reason>\n<headers>\n\n<body>
+uid = 0  # Only root user
+proxy_request_stdin = true
+
+# Example 3: Executable-based routing with request forwarding
+# Forward requests from curl with process metadata
+# Command outputs HTTP response with custom status code
+[[plugins]]
+pattern = "/curl-only/*"
+pattern_type = "glob"
+response_source = { type = "command", command = "./scripts/curl-handler.sh", args = [] }
+executable_pattern = { pattern = "/usr/bin/curl", pattern_type = "exact" }
+proxy_request_stdin = true
+
+# Example 4: Fallback status code when command doesn't output HTTP response
+# If the command outputs raw text (not HTTP format), use the configured status_code
+[[plugins]]
+pattern = "/raw-output"
+pattern_type = "exact"
+response_source = { type = "command", command = "echo", args = ["Hello World"] }
+status_code = 200  # Used as fallback if command doesn't output HTTP response
+proxy_request_stdin = true
+
+# Example 4: Regular command plugin without stdin forwarding
+# This works as before - command output is returned as response
+[[plugins]]
+pattern = "/hostname"
+pattern_type = "exact"
+response_source = { type = "command", command = "hostname", args = [] }
+status_code = 200
+# proxy_request_stdin not set, so command runs without stdin input
+
+# Example 5: File-based response (proxy_request_stdin not applicable)
+[[plugins]]
+pattern = "/static"
+pattern_type = "exact"
+response_source = { type = "file", path = "examples/responses/instance-id.txt" }
+status_code = 200
+# proxy_request_stdin cannot be used with file-based sources

@@ -1,0 +1,31 @@
+# Dockerfile for building eBPF programs
+# This provides a consistent build environment for eBPF compilation
+
+FROM rustlang/rust:nightly-bookworm-slim
+
+# Install eBPF build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    musl-tools \
+    llvm \
+    clang \
+    libbpf-dev \
+    linux-headers-generic \
+    pkg-config \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rust-src component for nightly
+RUN rustup component add rust-src
+
+# Add musl target for nightly
+RUN rustup target add x86_64-unknown-linux-musl
+
+# Install bpf-linker
+RUN cargo install bpf-linker
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command
+CMD ["bash"]

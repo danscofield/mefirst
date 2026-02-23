@@ -1,0 +1,71 @@
+# mefirst proxy Configuration with Process-Aware Routing
+#
+# This demonstrates how to configure routing based on process metadata
+
+
+# Cgroup path for eBPF attachment
+cgroup_path = "/sys/fs/cgroup"
+
+# Target configuration
+target_address = "169.254.169.254"
+target_port = 80
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+bind_port = 8080
+
+# Metrics configuration
+enable_metrics = true
+metrics_port = 9090
+
+# Process-aware routing examples
+
+# Example 1: Route requests from a specific UID
+[[plugins]]
+pattern = "/latest/meta-data/iam/security-credentials/*"
+pattern_type = "glob"
+response_source = { type = "file", path = "examples/responses/credentials.json" }
+status_code = 200
+uid = 1000  # Only match requests from UID 1000
+
+# Example 2: Route requests from a specific username
+[[plugins]]
+pattern = "/latest/meta-data/instance-id"
+pattern_type = "exact"
+response_source = { type = "file", path = "examples/responses/instance-id.txt" }
+status_code = 200
+username = "appuser"  # Only match requests from user 'appuser'
+
+# Example 3: Route requests from curl executable
+[[plugins]]
+pattern = "/latest/meta-data/hostname"
+pattern_type = "exact"
+response_source = { type = "command", command = "hostname", args = [] }
+status_code = 200
+executable_pattern = { pattern = "/usr/bin/curl", pattern_type = "exact" }
+
+# Example 4: Route requests with specific command line pattern
+[[plugins]]
+pattern = "/api/*"
+pattern_type = "glob"
+response_source = { type = "command", command = "echo", args = ["API response"] }
+status_code = 200
+cmdline_pattern = { pattern = "*--api-key*", pattern_type = "glob" }
+
+# Example 5: Route requests based on HTTP Host header
+[[plugins]]
+pattern = "/health"
+pattern_type = "exact"
+response_source = { type = "command", command = "echo", args = ["OK"] }
+status_code = 200
+host_pattern = { pattern = "example.com", pattern_type = "exact" }
+
+# Example 6: Combine multiple filters (all must match)
+[[plugins]]
+pattern = "/admin/*"
+pattern_type = "glob"
+response_source = { type = "file", path = "examples/responses/role-list.json" }
+status_code = 200
+uid = 0  # Must be root
+executable_pattern = { pattern = "/usr/bin/*", pattern_type = "glob" }
+host_pattern = { pattern = "admin.*.com", pattern_type = "glob" }

@@ -1,0 +1,51 @@
+# mefirst proxy Configuration with Plugins
+#
+# This demonstrates how to configure custom responses for specific paths
+
+
+# Path to compiled eBPF object file (optional)
+# NOTE: This option requires compiling with the 'allow-external-ebpf' feature flag
+# If not specified, uses embedded bytecode compiled into the binary
+
+# SECURITY WARNING: Only load eBPF programs from trusted sources
+# ebpf_program_path = "/usr/local/lib/mefirst-ebpf"
+
+# Cgroup path for eBPF attachment 
+cgroup_path = "/sys/fs/cgroup"
+
+# Target configuration
+target_address = "169.254.169.254"
+target_port = 80
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+bind_port = 8080
+
+# Metrics configuration
+enable_metrics = true
+metrics_port = 9090
+
+# Interception plugins
+# These plugins intercept specific paths and return custom responses
+
+# Example 1: Static file response for IAM credentials
+[[plugins]]
+pattern = "/latest/meta-data/iam/security-credentials/*"
+pattern_type = "glob"
+response_source = { type = "file", path = "examples/responses/credentials.json" }
+status_code = 200
+
+# Example 2: Static file response for instance ID
+[[plugins]]
+pattern = "/latest/meta-data/instance-id"
+pattern_type = "exact"
+response_source = { type = "file", path = "examples/responses/instance-id.txt" }
+status_code = 200
+
+# Example 3: Command execution for dynamic responses
+[[plugins]]
+pattern = "/latest/meta-data/hostname"
+pattern_type = "exact"
+response_source = { type = "command", command = "hostname", args = [] }
+status_code = 200
+timeout_secs = 5

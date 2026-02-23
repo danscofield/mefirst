@@ -1,0 +1,24 @@
+[package]
+name = "mefirst-ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aya-ebpf = "0.1"
+aya-log-ebpf = "0.1"
+
+# Note: Profile settings are managed at the workspace root
+# eBPF programs require specific optimization settings for proper compilation
+
+[[bin]]
+name = "mefirst-ebpf"
+path = "src/main.rs"
+test = false
+
+[[bin]]
+name = "mefirst-lsm"
+path = "src/lsm.rs"
+test = false

@@ -1,0 +1,91 @@
+# mefirst proxy Configuration with Optional IP Field (YAML format)
+#
+# This demonstrates how to use the optional IP field in connection interception
+# to capture all outbound traffic on a specific port and filter by Host header
+#
+# IPv6 Support: Both IPv4 and IPv6 connections are intercepted automatically.
+# - IPv4 connections are redirected to 127.0.0.1 (IPv4 loopback)
+# - IPv6 connections are redirected to ::1 (IPv6 loopback)
+# - The proxy binds to both 127.0.0.1 and ::1 with separate listeners
+
+
+# Cgroup path for eBPF attachment
+cgroup_path: /sys/fs/cgroup
+
+# Connection interception configuration with optional IP field
+# When IP is not specified, intercept ALL connections to port 80 regardless of destination
+interception:
+  port: 80
+  # ip field is omitted - this enables IP-agnostic mode
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+# This ensures the proxy is never exposed to remote connections
+bind_port: 8080
+
+# Metrics configuration
+enable_metrics: true
+metrics_port: 9090
+
+# Plugins with host pattern filtering
+plugins:
+  # Example 1: Route requests to api.example.com to a specific response
+  # This works without specifying an IP because we intercept all port 80 traffic
+  # and filter by Host header
+  - pattern: /api/*
+    pattern_type: glob
+    response_source:
+      type: file
+      path: examples/responses/instance-id.txt
+    status_code: 200
+    host_pattern:
+      pattern: api.example.com
+      pattern_type: exact
+
+  # Example 2: Route requests to *.internal.com domains to a command
+  - pattern: /*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Internal service response
+    status_code: 200
+    host_pattern:
+      pattern: "*.internal.com"
+      pattern_type: glob
+
+  # Example 3: Route requests from specific user to specific host
+  - pattern: /admin/*
+    pattern_type: glob
+    response_source:
+      type: file
+      path: examples/responses/credentials.json
+    status_code: 200
+    uid: 0  # Only root user
+    host_pattern:
+      pattern: admin.example.com
+      pattern_type: exact
+
+  # Example 4: Regex pattern for host matching
+  - pattern: /api/v[0-9]+/*
+    pattern_type: regex
+    response_source:
+      type: command
+      command: echo
+      args:
+        - API response
+    status_code: 200
+    host_pattern:
+      pattern: "^(api|www)\\.example\\.com$"
+      pattern_type: regex
+
+  # Example 5: Fallback for all other requests
+  - pattern: /*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Default response
+    status_code: 200

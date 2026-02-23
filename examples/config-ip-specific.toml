@@ -1,0 +1,51 @@
+# mefirst proxy Configuration with IP-Specific Interception
+#
+# This demonstrates IP-specific interception mode where only connections
+# to a specific (IP, port) pair are intercepted
+
+
+# Cgroup path for eBPF attachment
+cgroup_path = "/sys/fs/cgroup"
+
+# Connection interception configuration with specific IP
+# Only intercept connections to 169.254.169.254:80 (AWS metadata service)
+[interception]
+ip = "169.254.169.254"
+port = 80
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+bind_port = 8080
+
+# Metrics configuration
+enable_metrics = true
+metrics_port = 9090
+
+# Example 1: Route instance-id requests
+[[plugins]]
+pattern = "/latest/meta-data/instance-id"
+pattern_type = "exact"
+response_source = { type = "file", path = "examples/responses/instance-id.txt" }
+status_code = 200
+
+# Example 2: Route credentials requests from specific user
+[[plugins]]
+pattern = "/latest/meta-data/iam/security-credentials/*"
+pattern_type = "glob"
+response_source = { type = "file", path = "examples/responses/credentials.json" }
+status_code = 200
+uid = 1000  # Only user with uid 1000
+
+# Example 3: Route role list requests
+[[plugins]]
+pattern = "/latest/meta-data/iam/security-credentials/"
+pattern_type = "exact"
+response_source = { type = "file", path = "examples/responses/role-list.json" }
+status_code = 200
+
+# Example 4: Fallback for all other requests
+[[plugins]]
+pattern = "/*"
+pattern_type = "glob"
+response_source = { type = "command", command = "echo", args = ["Metadata not available"] }
+status_code = 404

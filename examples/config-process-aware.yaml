@@ -1,0 +1,158 @@
+# mefirst proxy Configuration with Process-Aware Routing (YAML format)
+#
+# This demonstrates all process-aware routing features including:
+# - UID filtering
+# - Username filtering
+# - Executable pattern matching
+# - Command line pattern matching
+# - Host header pattern matching
+# - Multiple filter combinations
+
+
+# Cgroup path for eBPF attachment
+cgroup_path: /sys/fs/cgroup
+
+# Target configuration (legacy format, still supported)
+target_address: 169.254.169.254
+target_port: 80
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+bind_port: 8080
+
+# Metrics configuration
+enable_metrics: true
+metrics_port: 9090
+
+# Process-aware routing plugins
+plugins:
+  # Example 1: UID-based routing
+  # Only intercept requests from user with uid 1000
+  - pattern: /user-specific/*
+    pattern_type: glob
+    response_source:
+      type: file
+      path: examples/responses/instance-id.txt
+    status_code: 200
+    uid: 1000
+
+  # Example 2: Username-based routing
+  # Only intercept requests from user "alice"
+  - pattern: /alice-only/*
+    pattern_type: glob
+    response_source:
+      type: file
+      path: examples/responses/credentials.json
+    status_code: 200
+    username: alice
+
+  # Example 3: Executable pattern matching (exact)
+  # Only intercept requests from curl
+  - pattern: /curl-only/*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Curl detected
+    status_code: 200
+    executable_pattern:
+      pattern: /usr/bin/curl
+      pattern_type: exact
+
+  # Example 4: Executable pattern matching (glob)
+  # Intercept requests from any Python interpreter
+  - pattern: /python-only/*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Python detected
+    status_code: 200
+    executable_pattern:
+      pattern: "*/python*"
+      pattern_type: glob
+
+  # Example 5: Executable pattern matching (regex)
+  # Intercept requests from node or npm
+  - pattern: /node-only/*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Node.js detected
+    status_code: 200
+    executable_pattern:
+      pattern: ".*(node|npm).*"
+      pattern_type: regex
+
+  # Example 6: Command line pattern matching
+  # Intercept requests from scripts with specific arguments
+  - pattern: /script-with-flag/*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Script with --production flag detected
+    status_code: 200
+    cmdline_pattern:
+      pattern: "*--production*"
+      pattern_type: glob
+
+  # Example 7: Host header pattern matching
+  # Route based on HTTP Host header
+  - pattern: /api/*
+    pattern_type: glob
+    response_source:
+      type: file
+      path: examples/responses/instance-id.txt
+    status_code: 200
+    host_pattern:
+      pattern: api.example.com
+      pattern_type: exact
+
+  # Example 8: Multiple filters combined (AND logic)
+  # All filters must match for the plugin to apply
+  - pattern: /admin/*
+    pattern_type: glob
+    response_source:
+      type: file
+      path: examples/responses/credentials.json
+    status_code: 200
+    uid: 0  # Must be root
+    executable_pattern:
+      pattern: /usr/bin/curl
+      pattern_type: exact
+    host_pattern:
+      pattern: admin.example.com
+      pattern_type: exact
+
+  # Example 9: Proxy request stdin with process metadata headers
+  # Forward complete HTTP request to command stdin with injected headers
+  - pattern: /process-aware-api/*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: ./examples/http-response-handler.sh
+      args: []
+    status_code: 200
+    proxy_request_stdin: true
+    # When proxy_request_stdin is true, the command receives:
+    # - X-Forwarded-Uid header
+    # - X-Forwarded-Username header
+    # - X-Forwarded-Pid header
+    # - X-Forwarded-Process-Name header
+    # - X-Forwarded-Process-Args header
+
+  # Example 10: Fallback for all other requests
+  - pattern: /*
+    pattern_type: glob
+    response_source:
+      type: command
+      command: echo
+      args:
+        - Default response
+    status_code: 200

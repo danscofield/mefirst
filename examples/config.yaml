@@ -1,0 +1,38 @@
+# IMDS Interposer Configuration (YAML)
+#
+# This file demonstrates all available configuration options
+
+
+# Path to compiled eBPF object file (optional)
+# NOTE: This option requires compiling with the 'allow-external-ebpf' feature flag
+# If not specified, uses embedded bytecode compiled into the binary
+
+# SECURITY WARNING: Only load eBPF programs from trusted sources
+# ebpf_program_path: /usr/local/lib/imdsinterposer-ebpf
+
+# Cgroup path for eBPF attachment 
+# Default: /sys/fs/cgroup (system root cgroup)
+# For containers: /sys/fs/cgroup/docker/<container_id> or /sys/fs/cgroup/kubepods/...
+cgroup_path: /sys/fs/cgroup
+
+# IMDS configuration
+imds_address: 169.254.169.254
+imds_port: 80
+
+# Proxy bind configuration
+# The proxy always binds to localhost on both IPv4 (127.0.0.1) and IPv6 (::1)
+bind_port: 8080
+
+# Metrics configuration
+enable_metrics: true
+metrics_port: 9090
+
+# Interception plugins (optional)
+# Uncomment to enable custom response interception
+# plugins:
+#   - pattern: "/latest/meta-data/iam/security-credentials/*"
+#     pattern_type: glob
+#     response_source:
+#       type: file
+#       path: examples/responses/credentials.json
+#     status_code: 200
