@@ -1,0 +1,71 @@
+# mefirst proxy - Global Process Metadata Injection Example
+#
+# This configuration demonstrates the inject_process_headers feature,
+# which adds process metadata headers (X-Forwarded-*) to ALL upstream requests.
+#
+# Use this when your upstream service needs to know which process made each
+# request, regardless of the URL path or plugin matching.
+
+# Cgroup path for eBPF attachment
+cgroup_path = "/sys/fs/cgroup"
+
+# Connection interception configuration
+# Using IP-agnostic mode (no IP specified) to intercept all traffic on port 80
+[interception]
+port = 80
+
+# Proxy bind port (always binds to 127.0.0.1 and ::1)
+bind_port = 8080
+
+# Enable global process metadata header injection
+# When true, ALL upstream requests will include these headers:
+# - X-Forwarded-Uid: User ID
+# - X-Forwarded-Username: Username
+# - X-Forwarded-Pid: Process ID
+# - X-Forwarded-Process-Name: Executable path
+# - X-Forwarded-Process-Args: Command line arguments
+inject_process_headers = true
+
+# Metrics configuration
+enable_metrics = true
+metrics_port = 9090
+
+# Example: You can still use plugins for specific paths
+# The process headers will be injected into both plugin responses
+# and proxied upstream requests
+[[plugins]]
+pattern = "/health"
+pattern_type = "exact"
+response_source = { type = "file", path = "examples/responses/instance-id.txt" }
+status_code = 200
+
+# Usage Examples:
+#
+# 1. Start the proxy:
+#    ./mefirst --config-file examples/config-inject-headers.toml
+#
+# 2. Make a request (will be proxied to upstream with process headers):
+#    curl http://google.com/
+#
+# 3. Your upstream service will receive headers like:
+#    X-Forwarded-Uid: 1000
+#    X-Forwarded-Username: ec2-user
+#    X-Forwarded-Pid: 12345
+#    X-Forwarded-Process-Name: /usr/bin/curl
+#    X-Forwarded-Process-Args: curl http://google.com/
+#
+# 4. Use with process-aware routing:
+#    Only inject headers for specific processes by combining with
+#    process filters in plugins (uid, executable_pattern, etc.)
+
+# Comparison with proxy_request_stdin:
+#
+# inject_process_headers (this feature):
+# - Adds headers to ALL upstream requests
+# - Headers go to the upstream service
+# - Use when upstream needs process context
+#
+# proxy_request_stdin (plugin feature):
+# - Adds headers only to plugin-matched requests
+# - Serialized request goes to command handler stdin
+# - Use for custom command-based routing

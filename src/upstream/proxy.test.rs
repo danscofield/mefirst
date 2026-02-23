@@ -22,6 +22,7 @@ mod proxy_tests {
             bind_port: 8080,
             enable_metrics: true,
             metrics_port: 9090,
+            inject_process_headers: false,
             plugins: vec![],
         })
     }

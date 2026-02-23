@@ -13,6 +13,7 @@ fn create_test_config() -> Arc<Config> {
         bind_port: 8080,
         enable_metrics: false,
         metrics_port: 9090,
+        inject_process_headers: false,
         plugins: vec![],
     })
 }

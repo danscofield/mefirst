@@ -155,7 +155,7 @@ pub async fn handle_request(
     }
 
     // No plugin matched, proxy to upstream service
-    match proxy_to_upstream(&state, &method, &full_path, &headers, body_bytes).await {
+    match proxy_to_upstream(&state, &method, &full_path, &headers, body_bytes, process_info.as_ref()).await {
         Ok(response) => {
             log_request_with_process(&method, &full_path, response.status(), process_info.as_ref());
             record_metrics(&state, &method, response.status(), start, false);
@@ -193,6 +193,7 @@ async fn proxy_to_upstream(
     path: &str,
     headers: &HeaderMap,
     body: Option<Bytes>,
+    process_info: Option<&crate::process::ProcessInfo>,
 ) -> Result<Response, ProxyError> {
     debug!("Proxying {} request to upstream: {}", method, path);
 
@@ -203,12 +204,26 @@ async fn proxy_to_upstream(
         })?;
 
     // Convert headers to Vec<(String, String)>
-    let header_vec: Vec<(String, String)> = headers
+    let mut header_vec: Vec<(String, String)> = headers
         .iter()
         .filter_map(|(k, v)| {
             v.to_str().ok().map(|val| (k.as_str().to_string(), val.to_string()))
         })
         .collect();
+    
+    // Inject process metadata headers if enabled
+    if state.config.inject_process_headers {
+        if let Some(info) = process_info {
+            debug!("Injecting process metadata headers into upstream request");
+            header_vec.push(("X-Forwarded-Uid".to_string(), info.uid.to_string()));
+            header_vec.push(("X-Forwarded-Username".to_string(), info.username.clone()));
+            header_vec.push(("X-Forwarded-Pid".to_string(), info.pid.to_string()));
+            header_vec.push(("X-Forwarded-Process-Name".to_string(), info.executable.clone()));
+            header_vec.push(("X-Forwarded-Process-Args".to_string(), info.cmdline.clone()));
+        } else {
+            debug!("inject_process_headers enabled but process metadata not available");
+        }
+    }
 
     // Convert body to Vec<u8> if present
     let body_vec = body.map(|b| b.to_vec());

@@ -99,6 +99,10 @@ pub struct ConfigFile {
     pub enable_metrics: bool,
     #[serde(default = "default_metrics_port")]
     pub metrics_port: u16,
+    
+    /// Inject process metadata headers (X-Forwarded-*) into all upstream requests
+    #[serde(default)]
+    pub inject_process_headers: bool,
 }
 
 // Default value functions for serde
@@ -158,6 +162,10 @@ pub struct Config {
     /// Metrics port
     #[arg(long, default_value = "9090", env = "METRICS_PORT")]
     pub metrics_port: u16,
+    
+    /// Inject process metadata headers (X-Forwarded-*) into all upstream requests
+    #[arg(long, default_value = "false", env = "INJECT_PROCESS_HEADERS")]
+    pub inject_process_headers: bool,
     
     /// Interception plugins (loaded from config file)
     #[arg(skip)]
@@ -263,6 +271,11 @@ impl Config {
         
         if self.metrics_port == 9090 && file_config.metrics_port != 9090 {
             self.metrics_port = file_config.metrics_port;
+        }
+        
+        // Merge inject_process_headers
+        if !self.inject_process_headers && file_config.inject_process_headers {
+            self.inject_process_headers = file_config.inject_process_headers;
         }
     }
     

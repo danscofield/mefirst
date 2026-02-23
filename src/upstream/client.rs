@@ -91,6 +91,9 @@ impl UpstreamClient {
     /// Returns the full response including status code, headers, and body.
     /// All headers are forwarded transparently (except hop-by-hop headers).
     /// 
+    /// In IP-agnostic mode (target_address is empty or 0.0.0.0), the destination
+    /// is extracted from the Host header.
+    /// 
     /// # Arguments
     /// * `method` - HTTP method to use
     /// * `path` - Request path (e.g., "/api/endpoint")
@@ -125,7 +128,36 @@ impl UpstreamClient {
         headers: Vec<(String, String)>,
         body: Option<Vec<u8>>,
     ) -> Result<(reqwest::StatusCode, Vec<(String, String)>, Vec<u8>)> {
-        let url = format!("{}{}", self.upstream_base_url(), path);
+        // Determine the upstream URL
+        // In IP-agnostic mode (target_address is empty or 0.0.0.0), extract host from Host header
+        let url = if self.config.target_address.is_empty() || self.config.target_address == "0.0.0.0" {
+            // IP-agnostic mode: extract host from Host header
+            let host_header = headers.iter()
+                .find(|(k, _)| k.to_lowercase() == "host")
+                .map(|(_, v)| v.as_str())
+                .ok_or_else(|| InterposerError::UpstreamRequest(
+                    "Host header required in IP-agnostic mode".to_string()
+                ))?;
+            
+            // Parse host header to separate hostname and port
+            // Host header can be "hostname" or "hostname:port"
+            let (hostname, port) = if let Some(colon_pos) = host_header.rfind(':') {
+                // Has port - split it
+                let hostname = &host_header[..colon_pos];
+                let port_str = &host_header[colon_pos + 1..];
+                let port = port_str.parse::<u16>()
+                    .unwrap_or(self.config.target_port);
+                (hostname, port)
+            } else {
+                // No port - use target_port
+                (host_header, self.config.target_port)
+            };
+            
+            format!("http://{}:{}{}", hostname, port, path)
+        } else {
+            // IP-specific mode: use configured target address
+            format!("{}{}", self.upstream_base_url(), path)
+        };
 
         debug!("Proxying {} request to {}", method, url);
 
@@ -232,6 +264,7 @@ mod tests {
             bind_port: 8080,
             enable_metrics: true,
             metrics_port: 9090,
+            inject_process_headers: false,
             plugins: vec![],
         })
     }
