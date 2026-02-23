@@ -4,8 +4,9 @@
 // in userspace. These tests verify the eBPF program structure and that
 // the LSM program can be loaded (on Linux with LSM support).
 //
-// The actual behavior (blocking PTRACE_ATTACH, allowing read-only ptrace, etc.)
-// is verified through integration tests on systems with LSM support.
+// The actual behavior is verified through integration tests on systems with LSM support:
+// - PTRACE_MODE_READ (0x01): Allowed - used by /proc filesystem access
+// - PTRACE_MODE_ATTACH (0x02): Blocked - prevents process debugging/modification
 
 #[test]
 #[cfg(all(target_os = "linux", feature = "ebpf"))]
@@ -27,10 +28,10 @@ fn test_lsm_hook_documentation() {
     // The actual implementation is in ebpf/src/lsm.rs
     
     // Expected behaviors:
-    // 1. PTRACE_ATTACH should be blocked for proxy process
-    // 2. Read-only ptrace modes should be allowed for proxy process
-    // 3. /proc/pid/fd access should work for proxy process
-    // 4. Memory modification should be blocked for proxy process
+    // 1. PTRACE_MODE_ATTACH (0x02) should be blocked for proxy process
+    // 2. PTRACE_MODE_READ (0x01) should be allowed for proxy process (used by /proc)
+    // 3. /proc/pid/fd access should work for proxy process (uses READ mode)
+    // 4. Memory/register modification should be blocked (requires ATTACH mode)
     // 5. All ptrace operations should be allowed for non-proxy processes
     
     // These behaviors are verified through integration tests
