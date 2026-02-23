@@ -8,7 +8,6 @@ use tokio::sync::Mutex;
 #[derive(Clone)]
 pub enum RedirectMode {
     Ebpf(Arc<Mutex<ebpf::EbpfRedirector>>),
-    Noop,
 }
 
 impl RedirectMode {
@@ -24,7 +23,6 @@ impl RedirectMode {
                 let mut redirector = r.lock().await;
                 redirector.setup().await
             }
-            RedirectMode::Noop => Ok(()),
         }
     }
 
@@ -34,7 +32,6 @@ impl RedirectMode {
                 let redirector = r.lock().await;
                 redirector.teardown().await
             }
-            RedirectMode::Noop => Ok(()),
         }
     }
 }

@@ -10,7 +10,7 @@
 /// the upstream client tests.
 
 use mefirst::config::{PatternType, PluginConfig, ResponseSource};
-use mefirst::plugin::{PluginFactory, InterceptionPlugin};
+use mefirst::plugin::PluginFactory;
 use std::io::Write;
 use tempfile::NamedTempFile;
 
@@ -43,6 +43,7 @@ async fn test_plugin_interception_flow() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
         // Exact match for credentials
         PluginConfig {
@@ -58,6 +59,7 @@ async fn test_plugin_interception_flow() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
         // Glob pattern for all instance-id requests
         PluginConfig {
@@ -74,6 +76,7 @@ async fn test_plugin_interception_flow() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
     ];
 
@@ -131,6 +134,7 @@ async fn test_plugin_priority_first_match() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
         PluginConfig {
             pattern: "/test/specific".to_string(),
@@ -145,6 +149,7 @@ async fn test_plugin_priority_first_match() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
     ];
 
@@ -175,6 +180,7 @@ async fn test_plugin_response_structure() {
         executable_pattern: None,
         cmdline_pattern: None,
         host_pattern: None,
+        proxy_request_stdin: None,
     };
 
     let plugin = PluginFactory::create_plugin(&config).unwrap();
@@ -203,6 +209,7 @@ async fn test_plugin_command_with_multiple_args() {
         executable_pattern: None,
         cmdline_pattern: None,
         host_pattern: None,
+        proxy_request_stdin: None,
     };
 
     let plugin = PluginFactory::create_plugin(&config).unwrap();
@@ -229,6 +236,7 @@ async fn test_plugin_regex_complex_patterns() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
         // Match paths with version numbers
         PluginConfig {
@@ -245,6 +253,7 @@ async fn test_plugin_regex_complex_patterns() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
+            proxy_request_stdin: None,
         },
     ];
 

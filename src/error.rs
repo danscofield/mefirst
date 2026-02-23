@@ -116,30 +116,6 @@ pub enum InterposerError {
 /// Convenient Result type alias for the Interposer
 pub type Result<T> = std::result::Result<T, InterposerError>;
 
-impl InterposerError {
-    /// Returns true if this error is retryable
-    pub fn is_retryable(&self) -> bool {
-        matches!(
-            self,
-            InterposerError::Timeout
-                | InterposerError::Connection(_)
-                | InterposerError::UpstreamRequest(_)
-                | InterposerError::ServiceUnavailable(_)
-                | InterposerError::Http(_)
-        )
-    }
-
-    /// Returns true if this error is a configuration error
-    pub fn is_config_error(&self) -> bool {
-        matches!(
-            self,
-            InterposerError::Config(_)
-                | InterposerError::InvalidConfig { .. }
-                | InterposerError::MissingConfig(_)
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,29 +133,6 @@ mod tests {
             err.to_string(),
             "Invalid configuration value for bind_port: must be between 1 and 65535"
         );
-    }
-
-    #[test]
-    fn test_is_retryable() {
-        assert!(InterposerError::Timeout.is_retryable());
-        assert!(InterposerError::Connection("network error".to_string()).is_retryable());
-        assert!(InterposerError::UpstreamRequest("timeout".to_string()).is_retryable());
-        assert!(InterposerError::ServiceUnavailable("down".to_string()).is_retryable());
-
-        assert!(!InterposerError::Config("bad config".to_string()).is_retryable());
-    }
-
-    #[test]
-    fn test_is_config_error() {
-        assert!(InterposerError::Config("test".to_string()).is_config_error());
-        assert!(InterposerError::InvalidConfig {
-            field: "test".to_string(),
-            reason: "test".to_string()
-        }
-        .is_config_error());
-        assert!(InterposerError::MissingConfig("test".to_string()).is_config_error());
-
-        assert!(!InterposerError::Timeout.is_config_error());
     }
 
     #[test]

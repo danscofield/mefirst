@@ -18,6 +18,7 @@ use capctl::caps::{CapState, Cap};
 
 pub struct EbpfRedirector {
     cgroup_path: PathBuf,
+    #[cfg_attr(not(all(target_os = "linux", feature = "ebpf")), allow(dead_code))]
     config: Arc<Config>,
     #[cfg(feature = "allow-external-ebpf")]
     #[allow(dead_code)]

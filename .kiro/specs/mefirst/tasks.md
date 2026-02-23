@@ -215,11 +215,12 @@ All phases completed ✅
 
 **Plugin System:**
 - Trait: `src/plugin/mod.rs`
-- Config: `src/plugin/config.rs`
+- Config: `src/config.rs` (consolidated from `src/plugin/config.rs`)
 - Matcher: `src/plugin/matcher.rs`
 - File plugin: `src/plugin/file.rs`
 - Command plugin: `src/plugin/command.rs`
 - Factory: `src/plugin/factory.rs`
+- Process-aware wrapper: `src/plugin/process_aware.rs`
 
 **Proxy:**
 - Server: `src/proxy/mod.rs`

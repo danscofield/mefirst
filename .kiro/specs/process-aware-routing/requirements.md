@@ -265,3 +265,23 @@ The eBPF component continues to handle connection interception and redirection, 
 9. WHEN proxy_request_stdin is true and the modified HTTP request is constructed, THE Proxy_Handler SHALL send the complete HTTP request (including injected headers) to the specified command via stdin
 10. WHEN proxy_request_stdin is false or not specified, THE Proxy_Handler SHALL not inject process metadata headers
 11. WHEN proxy_request_stdin is true and Process_Metadata is not available, THE Proxy_Handler SHALL send the original HTTP request without injected headers to the command via stdin
+
+### Requirement 19: Inject Process Metadata Headers into All Upstream Requests
+
+**User Story:** As a system administrator, I want to inject process metadata headers into ALL upstream requests (not just plugin-matched ones), so that my upstream services can make authorization and routing decisions based on the originating process.
+
+#### Acceptance Criteria
+
+1. THE Config SHALL support an optional inject_process_headers boolean configuration field (default: false)
+2. THE Config SHALL support inject_process_headers via CLI argument --inject-process-headers
+3. THE Config SHALL support inject_process_headers via environment variable INJECT_PROCESS_HEADERS
+4. WHEN inject_process_headers is true and a request is proxied to upstream, THE Proxy_Handler SHALL check if Process_Metadata is available
+5. WHEN inject_process_headers is true and Process_Metadata is available, THE Proxy_Handler SHALL add an X-Forwarded-Uid header with the uid value to the upstream request
+6. WHEN inject_process_headers is true and Process_Metadata is available, THE Proxy_Handler SHALL add an X-Forwarded-Username header with the username value to the upstream request
+7. WHEN inject_process_headers is true and Process_Metadata is available, THE Proxy_Handler SHALL add an X-Forwarded-Pid header with the pid value to the upstream request
+8. WHEN inject_process_headers is true and Process_Metadata is available, THE Proxy_Handler SHALL add an X-Forwarded-Process-Name header with the executable file path to the upstream request
+9. WHEN inject_process_headers is true and Process_Metadata is available, THE Proxy_Handler SHALL add an X-Forwarded-Process-Args header with the command line arguments to the upstream request
+10. WHEN inject_process_headers is false or not specified, THE Proxy_Handler SHALL NOT inject process metadata headers into upstream requests
+11. WHEN inject_process_headers is true and Process_Metadata is not available, THE Proxy_Handler SHALL forward the request to upstream without injected headers
+12. THE inject_process_headers feature SHALL apply to ALL upstream requests, including those that do not match any plugin pattern
+13. THE inject_process_headers feature SHALL be independent of proxy_request_stdin (both can be used simultaneously for different purposes)

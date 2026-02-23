@@ -1,7 +1,6 @@
 use axum::extract::Request;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
-use std::os::unix::io::AsRawFd;
 
 /// Extension that stores the socket file descriptor
 #[derive(Clone, Copy, Debug)]
@@ -37,7 +36,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut request: Request<B>) -> Self::Future {
+    fn call(&mut self, request: Request<B>) -> Self::Future {
         // Note: We can't actually get the socket FD here because Axum/Hyper
         // doesn't expose it at this layer. The TCP stream is owned by Hyper
         // and not accessible from the request.

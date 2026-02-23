@@ -200,55 +200,6 @@ impl UpstreamClient {
 
         Ok((status, response_headers, body))
     }
-
-    /// Make a generic HTTP request to the upstream service with full control
-    /// 
-    /// This is a lower-level method that allows specifying the HTTP method,
-    /// headers, and body. Useful for advanced use cases.
-    pub async fn request(
-        &self,
-        method: Method,
-        path: &str,
-        headers: Vec<(String, String)>,
-        body: Option<String>,
-    ) -> Result<(reqwest::StatusCode, Vec<(String, String)>, String)> {
-        let url = format!("{}{}", self.upstream_base_url(), path);
-
-        debug!("Making {} request to {}", method, url);
-
-        let mut request = self.client.request(method, &url);
-
-        // Add custom headers
-        for (key, value) in headers {
-            request = request.header(key, value);
-        }
-
-        // Add body if provided
-        if let Some(body) = body {
-            request = request.body(body);
-        }
-
-        let response = request
-            .send()
-            .await
-            .map_err(|e| InterposerError::UpstreamRequest(format!("Request failed: {}", e)))?;
-
-        let status = response.status();
-        
-        // Extract response headers
-        let response_headers: Vec<(String, String)> = response
-            .headers()
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-            .collect();
-
-        let body = response
-            .text()
-            .await
-            .map_err(|e| InterposerError::UpstreamResponseParse(format!("Failed to read response: {}", e)))?;
-
-        Ok((status, response_headers, body))
-    }
 }
 
 #[cfg(test)]

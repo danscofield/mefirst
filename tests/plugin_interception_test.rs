@@ -23,11 +23,7 @@ async fn test_plugin_registry_from_config() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
+            proxy_request_stdin: None,
         },
         PluginConfig {
             pattern: "/test/glob/*".to_string(),
@@ -43,11 +39,7 @@ async fn test_plugin_registry_from_config() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
+            proxy_request_stdin: None,
         },
     ];
 
@@ -84,16 +76,12 @@ async fn test_plugin_response_file() {
         },
         status_code: 200,
         timeout_secs: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
         uid: None,
         username: None,
         executable_pattern: None,
         cmdline_pattern: None,
         host_pattern: None,
+        proxy_request_stdin: None,
     };
 
     let plugin = PluginFactory::create_plugin(&config).unwrap();
@@ -115,16 +103,12 @@ async fn test_plugin_response_command() {
         },
         status_code: 200,
         timeout_secs: Some(5),
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
         uid: None,
         username: None,
         executable_pattern: None,
         cmdline_pattern: None,
         host_pattern: None,
+        proxy_request_stdin: None,
     };
 
     let plugin = PluginFactory::create_plugin(&config).unwrap();
@@ -158,11 +142,7 @@ async fn test_plugin_first_match_routing() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
+            proxy_request_stdin: None,
         },
         PluginConfig {
             pattern: "/test/specific".to_string(),
@@ -177,11 +157,7 @@ async fn test_plugin_first_match_routing() {
             executable_pattern: None,
             cmdline_pattern: None,
             host_pattern: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
+            proxy_request_stdin: None,
         },
     ];
 
@@ -207,23 +183,13 @@ async fn test_plugin_custom_status_code() {
             path: temp_file.path().to_path_buf(),
         },
         status_code: 404,
-            timeout_secs: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
         timeout_secs: None,
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
         uid: None,
         username: None,
         executable_pattern: None,
         cmdline_pattern: None,
         host_pattern: None,
+        proxy_request_stdin: None,
     };
 
     let plugin = PluginFactory::create_plugin(&config).unwrap();
@@ -242,16 +208,12 @@ async fn test_plugin_regex_pattern() {
         },
         status_code: 200,
         timeout_secs: Some(5),
-            uid: None,
-            username: None,
-            executable_pattern: None,
-            cmdline_pattern: None,
-            host_pattern: None,
         uid: None,
         username: None,
         executable_pattern: None,
         cmdline_pattern: None,
         host_pattern: None,
+        proxy_request_stdin: None,
     };
 
     let plugin = PluginFactory::create_plugin(&config).unwrap();

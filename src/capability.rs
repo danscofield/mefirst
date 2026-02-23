@@ -19,18 +19,6 @@ pub struct CapabilityStatus {
     pub has_dac_read_search: bool,
 }
 
-impl CapabilityStatus {
-    /// Check if all eBPF capabilities are present
-    pub fn has_ebpf_caps(&self) -> bool {
-        self.has_bpf || self.has_sys_admin
-    }
-    
-    /// Check if all process metadata capabilities are present
-    pub fn has_process_metadata_caps(&self) -> bool {
-        self.has_sys_ptrace && self.has_dac_read_search
-    }
-}
-
 /// Check for all required capabilities before loading eBPF programs
 /// This should be called before any eBPF operations
 pub fn check_all_capabilities() -> Result<CapabilityStatus> {

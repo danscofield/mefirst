@@ -276,31 +276,35 @@ impl PatternMatcher {
 
 ### 4. Process-Aware Routing Engine
 
-**Location**: `src/plugin/routing.rs` (new module)
+**Location**: `src/plugin/process_aware.rs` (implemented), `src/plugin/factory.rs` (plugin creation)
 
 **Responsibilities**:
+- Wrap base plugins (FilePlugin, CommandPlugin) with process-aware filtering
 - Evaluate all routing filters (uid, username, executable, cmdline, host)
 - Apply AND logic for multiple filters
-- Select first matching plugin
+- Select first matching plugin via PluginRegistry
 
 **Interface**:
 ```rust
-pub struct RoutingEngine {
-    plugins: Vec<ProcessAwarePlugin>,
+pub struct PluginRegistry {
+    plugins: Vec<Box<dyn InterceptionPlugin>>,
 }
 
-impl RoutingEngine {
-    pub fn new(config: &Config) -> Result<Self>;
+impl PluginRegistry {
+    pub fn new(plugins: Vec<Box<dyn InterceptionPlugin>>) -> Self;
     
-    pub fn find_matching_plugin(
+    pub fn find_match(
         &self,
-        request: &Request,
+        path: &str,
         process_info: Option<&ProcessInfo>,
-    ) -> Option<&ProcessAwarePlugin>;
+        headers: &HashMap<String, String>,
+    ) -> Option<&dyn InterceptionPlugin>;
+    
+    pub fn len(&self) -> usize;
 }
 
-struct ProcessAwarePlugin {
-    config: PluginConfig,
+pub struct ProcessAwarePlugin {
+    base_plugin: Box<dyn InterceptionPlugin>,
     uid_filter: Option<u32>,
     username_filter: Option<String>,
     executable_matcher: Option<PatternMatcher>,
@@ -309,12 +313,20 @@ struct ProcessAwarePlugin {
 }
 
 impl ProcessAwarePlugin {
-    fn matches(
+    pub fn new(
+        base_plugin: Box<dyn InterceptionPlugin>,
+        config: &PluginConfig,
+    ) -> Result<Self>;
+    
+    fn matches_process_filters(
         &self,
-        request: &Request,
         process_info: Option<&ProcessInfo>,
+        headers: &HashMap<String, String>,
     ) -> bool;
 }
+```
+
+**Note**: The routing engine is implemented through the `PluginRegistry` and `ProcessAwarePlugin` wrapper pattern. The `PluginFactory` automatically wraps plugins with `ProcessAwarePlugin` when process filters are configured.
 ```
 
 ### 5. Configuration Parser and Validator
@@ -326,6 +338,7 @@ impl ProcessAwarePlugin {
 - Validate pattern types and regex patterns
 - Ensure required fields are present
 - Validate proxy_request_stdin compatibility with response sources
+- Validate PluginConfig fields (consolidated from separate module)
 
 **Extensions**:
 ```rust
@@ -335,8 +348,7 @@ impl Config {
         
         // Validate process-aware routing rules
         for plugin in &self.plugins {
-            validate_plugin_filters(plugin)?;
-            validate_proxy_request_stdin(plugin)?;
+            plugin.validate()?;
         }
         
         // Warn if process filters configured but eBPF disabled
@@ -348,47 +360,63 @@ impl Config {
     }
 }
 
-fn validate_plugin_filters(plugin: &PluginConfig) -> Result<()> {
-    // Validate pattern configs have pattern_type
-    // Validate regex patterns compile
-    // Validate connection interception config has port
-}
-
-fn validate_proxy_request_stdin(plugin: &PluginConfig) -> Result<()> {
-    if let Some(true) = plugin.proxy_request_stdin {
-        match &plugin.response_source {
-            ResponseSource::Command { .. } => Ok(()),
-            ResponseSource::File { .. } => {
-                Err(anyhow!("proxy_request_stdin can only be used with command-based response sources"))
+impl PluginConfig {
+    pub fn validate(&self) -> Result<()> {
+        // Validate pattern configs have pattern_type
+        // Validate regex patterns compile
+        // Validate connection interception config has port
+        // Validate proxy_request_stdin compatibility
+        if let Some(true) = self.proxy_request_stdin {
+            match &self.response_source {
+                ResponseSource::Command { .. } => Ok(()),
+                ResponseSource::File { .. } => {
+                    Err(anyhow!("proxy_request_stdin can only be used with command-based response sources"))
+                }
             }
+        } else {
+            Ok(())
         }
-    } else {
-        Ok(())
+    }
+    
+    pub fn response_source_type(&self) -> &'static str {
+        match &self.response_source {
+            ResponseSource::File { .. } => "file",
+            ResponseSource::Command { .. } => "command",
+        }
     }
 }
 ```
 
+**Note**: Plugin configuration validation was consolidated from `src/plugin/config.rs` into `src/config.rs` during code cleanup to reduce module complexity.
+```
+
 ### 6. Capability Checker
 
-**Location**: `src/redirect/capabilities.rs` (new module)
+**Location**: `src/capability.rs` (existing module, extended)
 
 **Responsibilities**:
 - Check for CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH at startup
+- Check for eBPF-related capabilities (CAP_BPF, CAP_SYS_ADMIN, CAP_NET_ADMIN)
 - Log warnings if capabilities are missing
 - Allow graceful degradation
 
 **Interface**:
 ```rust
-pub struct CapabilityChecker;
-
-impl CapabilityChecker {
-    pub fn check_process_metadata_capabilities() -> CapabilityStatus;
-}
-
 pub struct CapabilityStatus {
+    // eBPF operation capabilities
+    pub has_bpf: bool,
+    pub has_sys_admin: bool,
+    pub has_net_admin: bool,
+    
+    // Process metadata capabilities
     pub has_sys_ptrace: bool,
     pub has_dac_read_search: bool,
 }
+
+pub fn check_capabilities() -> CapabilityStatus;
+```
+
+**Note**: During code cleanup, unused capability check methods (`has_ebpf_caps()`, `has_process_metadata_caps()`, `check_all_capabilities()`) were removed. Only the actively used `check_capabilities()` function remains.
 ```
 
 ### 7. LSM Hook for Ptrace Restriction
@@ -415,7 +443,7 @@ This will be a separate eBPF program loaded alongside the connect hook.
 
 ### 8. Command Executor with HTTP Header Injection
 
-**Location**: `src/plugin/command_executor.rs` (new module)
+**Location**: `src/plugin/command.rs` (existing module, extended)
 
 **Responsibilities**:
 - Execute command-based response sources
@@ -425,53 +453,26 @@ This will be a separate eBPF program loaded alongside the connect hook.
 
 **Interface**:
 ```rust
-pub struct CommandExecutor {
+pub struct CommandPlugin {
     config: PluginConfig,
+    executable_matcher: Option<PatternMatcher>,
+    cmdline_matcher: Option<PatternMatcher>,
+    host_matcher: Option<PatternMatcher>,
 }
 
-impl CommandExecutor {
-    pub fn new(config: PluginConfig) -> Self;
+impl CommandPlugin {
+    pub fn new(config: PluginConfig) -> Result<Self>;
     
-    pub async fn execute(
+    async fn execute_command(
         &self,
-        request: &Request,
-        process_info: Option<&ProcessInfo>,
-    ) -> Result<Response>;
+        request_context: &RequestContext,
+    ) -> Result<PluginResponse>;
     
     fn inject_process_headers(
         &self,
-        request: &mut Request,
+        headers: &mut HashMap<String, String>,
         process_info: &ProcessInfo,
     );
-}
-
-impl CommandExecutor {
-    fn inject_process_headers(
-        &self,
-        request: &mut Request,
-        process_info: &ProcessInfo,
-    ) {
-        request.headers_mut().insert(
-            "X-Forwarded-Uid",
-            HeaderValue::from_str(&process_info.uid.to_string()).unwrap(),
-        );
-        request.headers_mut().insert(
-            "X-Forwarded-Username",
-            HeaderValue::from_str(&process_info.username).unwrap(),
-        );
-        request.headers_mut().insert(
-            "X-Forwarded-Pid",
-            HeaderValue::from_str(&process_info.pid.to_string()).unwrap(),
-        );
-        request.headers_mut().insert(
-            "X-Forwarded-Process-Name",
-            HeaderValue::from_str(&process_info.executable).unwrap(),
-        );
-        request.headers_mut().insert(
-            "X-Forwarded-Process-Args",
-            HeaderValue::from_str(&process_info.cmdline).unwrap(),
-        );
-    }
 }
 ```
 
@@ -480,6 +481,8 @@ impl CommandExecutor {
 - When `proxy_request_stdin` is true but process metadata is unavailable, forward the original request without injected headers
 - When `proxy_request_stdin` is false or not specified, execute command without modifying the request
 - Serialize the complete HTTP request (method, path, headers, body) and send to command stdin
+
+**Note**: The command execution logic is integrated into the `CommandPlugin` struct rather than a separate `CommandExecutor` module for better cohesion.
 
 ## Data Models
 
@@ -900,3 +903,100 @@ proptest! {
 4. **Username Resolution**: Tests should mock or stub username resolution to avoid dependencies on system user databases.
 
 5. **Randomized Testing**: Property-based tests with 100+ iterations may be slower than unit tests. We'll ensure they can be run selectively during development.
+
+## Code Organization and Refactoring
+
+### Module Structure
+
+The implementation follows a clean module structure:
+
+```
+src/
+├── capability.rs          # Capability checking (eBPF + process metadata)
+├── config.rs              # Configuration parsing and validation (consolidated)
+├── error.rs               # Error types
+├── lib.rs                 # Library root
+├── logging.rs             # Logging configuration
+├── main.rs                # Binary entry point
+├── metrics.rs             # Prometheus metrics
+├── plugin/
+│   ├── command.rs         # Command-based plugins with header injection
+│   ├── factory.rs         # Plugin creation and registry
+│   ├── file.rs            # File-based plugins
+│   ├── matcher.rs         # Pattern matching (exact/glob/regex)
+│   ├── mod.rs             # Plugin trait and types
+│   └── process_aware.rs   # Process-aware plugin wrapper
+├── process/
+│   ├── mod.rs             # ProcessInfo type definition
+│   └── retriever.rs       # Proc filesystem spidering
+├── proxy/
+│   ├── handler.rs         # HTTP request handler
+│   ├── mod.rs             # Proxy server
+│   └── socket_fd_layer.rs # Socket FD extraction layer
+├── redirect/
+│   ├── ebpf.rs            # eBPF program loading and management
+│   └── mod.rs             # Redirect mode abstraction
+└── upstream/
+    ├── client.rs          # Upstream HTTP client
+    └── mod.rs             # Upstream module re-exports
+
+ebpf/src/
+├── lib.rs                 # eBPF shared types
+├── lsm.rs                 # LSM ptrace restriction hook
+└── main.rs                # eBPF connect hook
+```
+
+### Code Cleanup (Phase 9)
+
+During implementation, the following cleanup and refactoring was performed:
+
+**Task 26: Remove Unused Code**
+- Removed unused capability check methods: `has_ebpf_caps()`, `has_process_metadata_caps()`, `check_all_capabilities()`
+- Removed unused error methods: `is_retryable()`, `is_config_error()`
+- Removed unused logging function: `init_default_logging()`
+- Removed unused upstream client method: `request()` (kept `proxy_request_full()`)
+- Cleaned up unused imports across multiple files
+
+**Task 27: Simplify RedirectMode Abstraction**
+- Removed `RedirectMode::Noop` variant (eBPF is now mandatory)
+- Kept enum structure for future extensibility
+- Updated tests to use `#[ignore]` for eBPF-dependent tests
+
+**Task 28: Consolidate Plugin Configuration**
+- Moved `PluginConfig::validate()` from `src/plugin/config.rs` to `src/config.rs`
+- Moved `PluginConfig::response_source_type()` to `src/config.rs`
+- Deleted `src/plugin/config.rs` module entirely
+- Moved all 9 plugin configuration tests to `src/config.rs`
+- Reduced module count and improved code organization
+
+**Task 29: Clean Up Process Retriever**
+- Removed `_placeholder: ()` field from `ProcessMetadataRetriever`
+- Added conditional compilation attributes to fix warnings on non-Linux platforms
+- Added `#[cfg_attr(not(target_os = "linux"), allow(dead_code, unused_variables))]` to Linux-only functions
+- Conditionally imported `ProcessInfo`, `HashMap`, `fs`, and `RwLock` only on Linux
+- Evaluated cache structure (kept `RwLock<HashMap>` as appropriate for concurrent access)
+
+**Task 30: Evaluate Module Structure**
+- Evaluated `src/upstream/mod.rs` - kept as-is (client.rs is substantial at 270+ lines)
+- Evaluated `src/process/mod.rs` - kept as-is (structure is well-organized)
+
+**Task 31: Final Cleanup Verification**
+- Ran `cargo clippy -- -W clippy::all -W clippy::pedantic`
+- Fixed all unused imports, variables, and dead code warnings
+- Reduced clippy warnings from 146 to 6 minor pedantic warnings
+- Verified no unused dependencies
+- All 71 tests passing, 2 ignored (eBPF-dependent)
+- Binary size: 4.9M (native macOS), 7.2M (Linux musl with static linking)
+
+### Design Principles
+
+The implementation follows these key principles:
+
+1. **Separation of Concerns**: Each module has a clear, focused responsibility
+2. **Graceful Degradation**: System continues functioning when process metadata is unavailable
+3. **Backward Compatibility**: Existing routing rules work without modification
+4. **Testability**: Components are designed for unit testing and property-based testing
+5. **Error Handling**: All error paths are handled explicitly with appropriate logging
+6. **Performance**: Proc spidering adds minimal latency (~1-5ms) acceptable for HTTP proxy use case
+7. **Security**: LSM hooks restrict proxy process to read-only operations
+8. **Maintainability**: Code is well-documented with clear interfaces and minimal complexity

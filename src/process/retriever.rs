@@ -1,16 +1,19 @@
-use super::{ProcessInfo, ProcessInfoWithDestination};
+use super::ProcessInfoWithDestination;
+#[cfg(target_os = "linux")]
+use super::ProcessInfo;
 use crate::error::Result;
+#[cfg(target_os = "linux")]
 use std::collections::HashMap;
+#[cfg(target_os = "linux")]
 use std::fs;
 use std::net::SocketAddr;
+#[cfg(target_os = "linux")]
 use std::sync::RwLock;
 
 /// Retrieves process metadata by spidering /proc
 pub struct ProcessMetadataRetriever {
     #[cfg(target_os = "linux")]
     cache: RwLock<HashMap<u64, ProcessInfo>>,
-    #[cfg(target_os = "linux")]
-    _placeholder: (),
 }
 
 impl ProcessMetadataRetriever {
@@ -20,7 +23,6 @@ impl ProcessMetadataRetriever {
         {
             Ok(Self { 
                 cache: RwLock::new(HashMap::new()),
-                _placeholder: () 
             })
         }
         
@@ -281,6 +283,7 @@ fn read_proc_status_uid(pid: u32) -> Option<u32> {
 }
 
 /// Read executable path from /proc/<pid>/exe
+#[cfg_attr(not(target_os = "linux"), allow(dead_code, unused_variables))]
 fn read_proc_exe(pid: u32) -> String {
     #[cfg(target_os = "linux")]
     {
@@ -298,6 +301,7 @@ fn read_proc_exe(pid: u32) -> String {
 }
 
 /// Read command line from /proc/<pid>/cmdline
+#[cfg_attr(not(target_os = "linux"), allow(dead_code, unused_variables))]
 fn read_proc_cmdline(pid: u32) -> String {
     #[cfg(target_os = "linux")]
     {
@@ -320,6 +324,7 @@ fn read_proc_cmdline(pid: u32) -> String {
 
 /// Resolve username from UID
 /// Falls back to numeric UID string if resolution fails
+#[cfg_attr(not(target_os = "linux"), allow(dead_code, unused_variables))]
 fn resolve_username(uid: u32) -> String {
     #[cfg(target_os = "linux")]
     {

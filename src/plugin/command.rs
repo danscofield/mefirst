@@ -2,7 +2,6 @@ use crate::config::PluginConfig;
 use crate::error::{InterposerError, Result};
 use crate::plugin::matcher::PatternMatcher;
 use crate::plugin::{InterceptionPlugin, PluginResponse, RequestContext};
-use crate::process::ProcessInfo;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::process::Stdio;

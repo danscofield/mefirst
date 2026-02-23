@@ -1,5 +1,4 @@
 pub mod command;
-pub mod config;
 pub mod factory;
 pub mod file;
 pub mod matcher;

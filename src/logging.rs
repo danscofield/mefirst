@@ -223,14 +223,6 @@ pub fn init_logging(config: LoggingConfig) -> Result<()> {
     Ok(())
 }
 
-/// Initialize logging with default configuration
-///
-/// This is a convenience function that initializes logging with sensible defaults.
-/// For more control, use `init_logging` with a custom `LoggingConfig`.
-pub fn init_default_logging() -> Result<()> {
-    init_logging(LoggingConfig::default())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
