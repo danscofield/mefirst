@@ -1,5 +1,5 @@
-use mefirst::config::{Config, PatternType, PluginConfig, ResponseSource};
-use mefirst::plugin::{PluginFactory, PluginRegistry};
+use mefirst::config::{PatternType, PluginConfig, ResponseSource};
+use mefirst::plugin::PluginFactory;
 use std::io::Write;
 use tempfile::NamedTempFile;
 
